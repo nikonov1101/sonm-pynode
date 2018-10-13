@@ -1,17 +1,32 @@
 import json
+import hashlib
 from urllib import request
 
 from Crypto import Random
-
 from Crypto.Cipher import AES
+
+from eth_keyfile import load_keyfile, decode_keyfile_json
 
 
 class Node:
-    def __init__(self, key: bytes, endpoint: str):
-        self._key = key
+    def __init__(self, keyfile: str, password: str, endpoint: str):
+        pkey = self._load_eth_key(keyfile, password)
+        self._key = self._pkey_sha256(pkey)
         self._server = endpoint
         self._block_size = AES.block_size
         self._segment_size = 128
+
+    @staticmethod
+    def _load_eth_key(path: str, password: str) -> bytes:
+        keyfile_data = load_keyfile(path)
+        pkey = decode_keyfile_json(keyfile_data, password)
+        return pkey
+
+    @staticmethod
+    def _pkey_sha256(key: bytes) -> bytes:
+        m = hashlib.sha256()
+        m.update(key)
+        return m.digest()
 
     @property
     def balance(self):
@@ -46,8 +61,10 @@ class Node:
             return json.loads(decrypted_resp)
 
 
-with open('/tmp/key', 'rb') as keyfile:
-    key = keyfile.read()
-
-    node = Node(key, 'http://127.0.0.1:15031')
+def main():
+    key_file = '/Users/alex/go/src/github.com/sonm-io/core/keys/example.key'
+    key_password = 'any'
+    node_addr = 'http://127.0.0.1:15031'
+    
+    node = Node(key_file, key_password, node_addr)
     print(node.balance)
