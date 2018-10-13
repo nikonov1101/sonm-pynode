@@ -8,6 +8,10 @@ from Crypto.Cipher import AES
 from eth_keyfile import load_keyfile, decode_keyfile_json
 
 
+def bigint_from_string(v: str) -> float:
+    return int(v) / 1e18
+
+
 class Node:
     def __init__(self, keyfile: str, password: str, endpoint: str):
         pkey = self._load_eth_key(keyfile, password)
@@ -30,7 +34,12 @@ class Node:
 
     @property
     def balance(self):
-        return self._request('/TokenManagementServer/Balance/')
+        resp = self._request('/TokenManagementServer/Balance/')
+        return {
+            'liveBalance':    bigint_from_string(resp.get('liveBalance')),
+            'liveEthBalance': bigint_from_string(resp.get('liveEthBalance')),
+            'sideBalance':    bigint_from_string(resp.get('sideBalance')),
+        }
 
     def _encrypt(self, plaintext) -> bytes:
         vec = Random.new().read(AES.block_size)
@@ -65,6 +74,10 @@ def main():
     key_file = '/Users/alex/go/src/github.com/sonm-io/core/keys/example.key'
     key_password = 'any'
     node_addr = 'http://127.0.0.1:15031'
-    
+
     node = Node(key_file, key_password, node_addr)
     print(node.balance)
+
+
+if __name__ == '__main__':
+    main()
