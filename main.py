@@ -43,6 +43,10 @@ class Node:
             'sideBalance':    bigint_from_string(resp.get('sideBalance')),
         }
 
+    def worker_status(self, address) -> dict:
+        headers = {'x-worker-eth-addr': address}
+        return self._request("/WorkerManagementServer/Status/", headers=headers)
+
     def _encrypt(self, plaintext) -> bytes:
         vec = Random.new().read(AES.block_size)
         aes = AES.new(self._priv_key, AES.MODE_CFB, vec, segment_size=self._segment_size)
@@ -56,16 +60,18 @@ class Node:
         aes = AES.new(self._priv_key, AES.MODE_CFB, vec, segment_size=self._segment_size)
         return aes.decrypt(msg)
 
-    def _request(self, path, params=None, timeout=60) -> dict:
+    def _request(self, path, params=None, headers=None, timeout=60) -> dict:
         if not params:
             params = dict()
 
         plain = json.dumps(params).encode('utf8')
+        encrypted = self._encrypt(plain)
+
         url = self._server + path
+        if headers:
+            headers.update({'content-type': 'application/json'})
 
-        encrypted_req = self._encrypt(plain)
-        req = request.Request(url, data=encrypted_req, headers={'content-type': 'application/json'})
-
+        req = request.Request(url, data=encrypted, headers=headers)
         with request.urlopen(req, timeout=timeout) as resp:
             encrypted_resp = resp.read()
             decrypted_resp = self._decrypt(encrypted_resp)
@@ -80,7 +86,7 @@ def main():
     node = Node(key_file, key_password, node_addr)
 
     print(node.balance('0x8125721c2413d99a33e351e1f6bb4e56b6b633fd'))
-    print(node.balance())
+    print(node.worker_status('0x54fBd8d868398f63698f802932f7920fc0E8372E@127.0.0.1:15010'))
 
 
 if __name__ == '__main__':
