@@ -54,7 +54,7 @@ class Node:
         aes = AES.new(self._key, AES.MODE_CFB, vec, segment_size=self._segment_size)
         return aes.decrypt(msg)
 
-    def _request(self, path, params=None) -> dict:
+    def _request(self, path, params=None, timeout=60) -> dict:
         if not params:
             params = dict()
 
@@ -64,7 +64,7 @@ class Node:
         encrypted_req = self._encrypt(plain)
         req = request.Request(url, data=encrypted_req, headers={'content-type': 'application/json'})
 
-        with request.urlopen(req) as resp:
+        with request.urlopen(req, timeout=timeout) as resp:
             encrypted_resp = resp.read()
             decrypted_resp = self._decrypt(encrypted_resp)
             return json.loads(decrypted_resp)
