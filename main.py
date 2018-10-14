@@ -14,17 +14,18 @@ def bigint_from_string(v: str) -> float:
 
 class Node:
     def __init__(self, keyfile: str, password: str, endpoint: str):
-        pkey = self._load_eth_key(keyfile, password)
-        self._key = self._pkey_sha256(pkey)
+        eth_addr, priv_key = self._load_eth_key(keyfile, password)
+        self._priv_key = self._pkey_sha256(priv_key)
+        self._eth_addr = eth_addr
         self._server = endpoint
         self._block_size = AES.block_size
         self._segment_size = 128
 
     @staticmethod
-    def _load_eth_key(path: str, password: str) -> bytes:
+    def _load_eth_key(path: str, password: str) -> (str, bytes):
         keyfile_data = load_keyfile(path)
         pkey = decode_keyfile_json(keyfile_data, password)
-        return pkey
+        return keyfile_data.get('address'), pkey
 
     @staticmethod
     def _pkey_sha256(key: bytes) -> bytes:
@@ -32,9 +33,10 @@ class Node:
         m.update(key)
         return m.digest()
 
-    @property
-    def balance(self):
-        resp = self._request('/TokenManagementServer/Balance/')
+    def balance(self, whom: str = None) -> dict:
+        if not whom:
+            whom = self._eth_addr
+        resp = self._request('/TokenManagementServer/BalanceOf/', whom)
         return {
             'liveBalance':    bigint_from_string(resp.get('liveBalance')),
             'liveEthBalance': bigint_from_string(resp.get('liveEthBalance')),
@@ -43,7 +45,7 @@ class Node:
 
     def _encrypt(self, plaintext) -> bytes:
         vec = Random.new().read(AES.block_size)
-        aes = AES.new(self._key, AES.MODE_CFB, vec, segment_size=self._segment_size)
+        aes = AES.new(self._priv_key, AES.MODE_CFB, vec, segment_size=self._segment_size)
         encrypted_text = aes.encrypt(plaintext)
         return vec + encrypted_text
 
@@ -51,7 +53,7 @@ class Node:
         # split message to vector and body
         vec = data[:self._block_size]
         msg = data[self._block_size:]
-        aes = AES.new(self._key, AES.MODE_CFB, vec, segment_size=self._segment_size)
+        aes = AES.new(self._priv_key, AES.MODE_CFB, vec, segment_size=self._segment_size)
         return aes.decrypt(msg)
 
     def _request(self, path, params=None, timeout=60) -> dict:
@@ -76,7 +78,9 @@ def main():
     node_addr = 'http://127.0.0.1:15031'
 
     node = Node(key_file, key_password, node_addr)
-    print(node.balance)
+
+    print(node.balance('0x8125721c2413d99a33e351e1f6bb4e56b6b633fd'))
+    print(node.balance())
 
 
 if __name__ == '__main__':
