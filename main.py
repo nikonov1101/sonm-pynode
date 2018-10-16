@@ -1,6 +1,6 @@
 import json
 import hashlib
-from urllib import request
+from urllib import request, error
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -63,6 +63,8 @@ class Node:
     def _request(self, path, params=None, headers=None, timeout=60) -> dict:
         if not params:
             params = dict()
+        if not headers:
+            headers = dict()
 
         plain = json.dumps(params).encode('utf8')
         encrypted = self._encrypt(plain)
@@ -72,10 +74,19 @@ class Node:
             headers.update({'content-type': 'application/json'})
 
         req = request.Request(url, data=encrypted, headers=headers)
-        with request.urlopen(req, timeout=timeout) as resp:
-            encrypted_resp = resp.read()
-            decrypted_resp = self._decrypt(encrypted_resp)
-            return json.loads(decrypted_resp)
+
+        try:
+            resp = request.urlopen(req, timeout=timeout)
+            encrypted = resp.read()
+            status_code = resp.code
+        except error.HTTPError as err:
+            encrypted = err.read()
+            status_code = err.code
+
+        decrypted = self._decrypt(encrypted)
+        unmarshalled = json.loads(decrypted)
+        unmarshalled.update({'status_code': status_code})
+        return unmarshalled
 
 
 def main():
@@ -84,9 +95,7 @@ def main():
     node_addr = 'http://127.0.0.1:15031'
 
     node = Node(key_file, key_password, node_addr)
-
     print(node.balance('0x8125721c2413d99a33e351e1f6bb4e56b6b633fd'))
-    print(node.worker_status('0x54fBd8d868398f63698f802932f7920fc0E8372E@127.0.0.1:15010'))
 
 
 if __name__ == '__main__':
