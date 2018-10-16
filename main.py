@@ -37,11 +37,11 @@ class Node:
         if not whom:
             whom = self._eth_addr
         resp = self._request('/TokenManagementServer/BalanceOf/', whom)
-        return {
-            'liveBalance':    bigint_from_string(resp.get('liveBalance')),
-            'liveEthBalance': bigint_from_string(resp.get('liveEthBalance')),
-            'sideBalance':    bigint_from_string(resp.get('sideBalance')),
-        }
+
+        resp['liveBalance'] = bigint_from_string(resp.get('liveBalance'))
+        resp['liveEthBalance'] = bigint_from_string(resp.get('liveEthBalance'))
+        resp['sideBalance'] = bigint_from_string(resp.get('sideBalance'))
+        return resp
 
     def worker_status(self, address) -> dict:
         headers = {'x-worker-eth-addr': address}
