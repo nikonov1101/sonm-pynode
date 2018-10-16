@@ -47,6 +47,41 @@ class Node:
         headers = {'x-worker-eth-addr': address}
         return self._request("/WorkerManagementServer/Status/", headers=headers)
 
+    def deal_quick_buy(self, order_id: int, force: bool = False) -> dict:
+        req = {
+            'askID': str(order_id),
+            'force': force,
+        }
+        resp = self._request('/DealManagementServer/QuickBuy/', req)
+        return resp
+
+    def deal_status(self, deal_id: int) -> dict:
+        resp = self._request('/DealManagementServer/Status/', str(deal_id))
+        return resp
+
+    def deal_close(self, deal_id: int, blacklist: bool = False) -> dict:
+        req = {
+            'id':            str(deal_id),
+            'blacklistType': 1 if blacklist else 0,
+        }
+        resp = self._request('/DealManagementServer/Finish/', req)
+        return resp
+
+    def order_status(self, order_id: int) -> dict:
+        req = {
+            'id': str(order_id),
+        }
+        resp = self._request('/MarketServer/GetOrderByID/', req)
+        return resp
+
+    def task_status(self, deal_id: int, task_id: str) -> dict:
+        req = {
+            'id':     task_id,
+            'dealID': str(deal_id),
+        }
+        resp = self._request('/TaskManagementServer/Status/', req)
+        return resp
+
     def _encrypt(self, plaintext) -> bytes:
         vec = Random.new().read(AES.block_size)
         aes = AES.new(self._priv_key, AES.MODE_CFB, vec, segment_size=self._segment_size)
