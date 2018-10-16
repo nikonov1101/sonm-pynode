@@ -12,11 +12,11 @@ def bigint_from_string(v: str) -> float:
     return int(v) / 1e18
 
 
-class Node:
+class Transport:
     def __init__(self, keyfile: str, password: str, endpoint: str):
         eth_addr, priv_key = self._load_eth_key(keyfile, password)
+        self.eth_addr = eth_addr
         self._priv_key = self._pkey_sha256(priv_key)
-        self._eth_addr = eth_addr
         self._server = endpoint
         self._block_size = AES.block_size
         self._segment_size = 128
@@ -33,55 +33,6 @@ class Node:
         m.update(key)
         return m.digest()
 
-    def balance(self, whom: str = None) -> dict:
-        if not whom:
-            whom = self._eth_addr
-        resp = self._request('/TokenManagementServer/BalanceOf/', whom)
-
-        resp['liveBalance'] = bigint_from_string(resp.get('liveBalance'))
-        resp['liveEthBalance'] = bigint_from_string(resp.get('liveEthBalance'))
-        resp['sideBalance'] = bigint_from_string(resp.get('sideBalance'))
-        return resp
-
-    def worker_status(self, address) -> dict:
-        headers = {'x-worker-eth-addr': address}
-        return self._request("/WorkerManagementServer/Status/", headers=headers)
-
-    def deal_quick_buy(self, order_id: int, force: bool = False) -> dict:
-        req = {
-            'askID': str(order_id),
-            'force': force,
-        }
-        resp = self._request('/DealManagementServer/QuickBuy/', req)
-        return resp
-
-    def deal_status(self, deal_id: int) -> dict:
-        resp = self._request('/DealManagementServer/Status/', str(deal_id))
-        return resp
-
-    def deal_close(self, deal_id: int, blacklist: bool = False) -> dict:
-        req = {
-            'id':            str(deal_id),
-            'blacklistType': 1 if blacklist else 0,
-        }
-        resp = self._request('/DealManagementServer/Finish/', req)
-        return resp
-
-    def order_status(self, order_id: int) -> dict:
-        req = {
-            'id': str(order_id),
-        }
-        resp = self._request('/MarketServer/GetOrderByID/', req)
-        return resp
-
-    def task_status(self, deal_id: int, task_id: str) -> dict:
-        req = {
-            'id':     task_id,
-            'dealID': str(deal_id),
-        }
-        resp = self._request('/TaskManagementServer/Status/', req)
-        return resp
-
     def _encrypt(self, plaintext) -> bytes:
         vec = Random.new().read(AES.block_size)
         aes = AES.new(self._priv_key, AES.MODE_CFB, vec, segment_size=self._segment_size)
@@ -95,7 +46,7 @@ class Node:
         aes = AES.new(self._priv_key, AES.MODE_CFB, vec, segment_size=self._segment_size)
         return aes.decrypt(msg)
 
-    def _request(self, path, params=None, headers=None, timeout=60) -> dict:
+    def request(self, path, params=None, headers=None, timeout=60) -> dict:
         if not params:
             params = dict()
         if not headers:
@@ -124,13 +75,97 @@ class Node:
         return unmarshalled
 
 
+class Token:
+    def __init__(self, transport: Transport):
+        self._conn = transport
+
+    def balance(self, whom: str = None) -> dict:
+        if not whom:
+            whom = self._conn.eth_addr
+        resp = self._conn.request('/TokenManagementServer/BalanceOf/', whom)
+
+        resp['liveBalance'] = bigint_from_string(resp.get('liveBalance'))
+        resp['liveEthBalance'] = bigint_from_string(resp.get('liveEthBalance'))
+        resp['sideBalance'] = bigint_from_string(resp.get('sideBalance'))
+        return resp
+
+
+class Order:
+    def __init__(self, transport: Transport):
+        self._conn = transport
+
+    def status(self, order_id: int) -> dict:
+        req = {
+            'id': str(order_id),
+        }
+        resp = self._conn.request('/MarketServer/GetOrderByID/', req)
+        return resp
+
+
+class Deal:
+    def __init__(self, transport: Transport):
+        self._conn = transport
+
+    def quick_buy(self, order_id: int, force: bool = False) -> dict:
+        req = {
+            'askID': str(order_id),
+            'force': force,
+        }
+        resp = self._conn.request('/DealManagementServer/QuickBuy/', req)
+        return resp
+
+    def status(self, deal_id: int) -> dict:
+        resp = self._conn.request('/DealManagementServer/Status/', str(deal_id))
+        return resp
+
+    def close(self, deal_id: int, blacklist: bool = False) -> dict:
+        req = {
+            'id':            str(deal_id),
+            'blacklistType': 1 if blacklist else 0,
+        }
+        resp = self._conn.request('/DealManagementServer/Finish/', req)
+        return resp
+
+
+class Worker:
+    def __init__(self, transport: Transport):
+        self._conn = transport
+
+    def status(self, address) -> dict:
+        headers = {'x-worker-eth-addr': address}
+        return self._conn.request("/WorkerManagementServer/Status/", headers=headers)
+
+
+class Task:
+    def __init__(self, transport: Transport):
+        self._conn = transport
+
+    def status(self, deal_id: int, task_id: str) -> dict:
+        req = {
+            'id':     task_id,
+            'dealID': str(deal_id),
+        }
+        resp = self._conn.request('/TaskManagementServer/Status/', req)
+        return resp
+
+
+class Node:
+    def __init__(self, keyfile: str, password: str, endpoint: str):
+        conn = Transport(keyfile, password, endpoint)
+        self.token = Token(conn)
+        self.order = Order(conn)
+        self.deal = Deal(conn)
+        self.worker = Worker(conn)
+        self.task = Task(conn)
+
+
 def main():
     key_file = '/Users/alex/go/src/github.com/sonm-io/core/keys/example.key'
     key_password = 'any'
     node_addr = 'http://127.0.0.1:15031'
 
     node = Node(key_file, key_password, node_addr)
-    print(node.balance('0x8125721c2413d99a33e351e1f6bb4e56b6b633fd'))
+    print(node.token.balance('0x8125721c2413d99a33e351e1f6bb4e56b6b633fd'))
 
 
 if __name__ == '__main__':
