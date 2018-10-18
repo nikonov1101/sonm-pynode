@@ -89,6 +89,18 @@ class Token:
         resp['sideBalance'] = bigint_from_string(resp.get('sideBalance'))
         return resp
 
+    def transfer(self, whom: str, amount: int):
+        """
+        :param whom: ethereum address to send funds
+        :param amount: wei-graded value to transfer (use 1e18 is you want to send 1 SNM)
+        """
+        req = {
+            'to':     whom,
+            'amount': '%d' % amount,
+        }
+        resp = self._conn.request('/TokenManagementServer/Transfer/', req)
+        return resp
+
 
 class Order:
     def __init__(self, transport: Transport):
