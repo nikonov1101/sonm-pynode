@@ -138,6 +138,18 @@ class Deal:
         resp = self._conn.request('/DealManagementServer/Finish/', req)
         return resp
 
+    def open(self, ask_id: int, bid_id: int, force: bool = False) -> dict:
+        req = {
+            'askID': str(ask_id),
+            'bidID': str(bid_id),
+            'force': force,
+        }
+        resp = self._conn.request('/DealManagementServer/Open/', req)
+        return resp
+
+    def list(self, filters: dict) -> dict:
+        return self._conn.request('/DWHServer/GetDeals/', filters)
+
 
 class Worker:
     def __init__(self, transport: Transport):
