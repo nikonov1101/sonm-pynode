@@ -172,12 +172,19 @@ class Task:
     def __init__(self, transport: Transport):
         self._conn = transport
 
-    def status(self, deal_id: int, task_id: str) -> dict:
+    def status(self, deal_id: str, task_id: str) -> dict:
         req = {
             'id': task_id,
-            'dealID': str(deal_id),
+            'dealID': deal_id,
         }
         resp = self._conn.request('/TaskManagementServer/Status/', req)
+        return resp
+
+    def list(self, deal_id):
+        req = {
+            'dealID': deal_id,
+        }
+        resp = self._conn.request('/TaskManagementServer/List/', req)
         return resp
 
 
