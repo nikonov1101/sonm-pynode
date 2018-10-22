@@ -95,7 +95,7 @@ class Token:
         :param amount: wei-graded value to transfer (use 1e18 is you want to send 1 SNM)
         """
         req = {
-            'to':     whom,
+            'to': whom,
             'amount': '%d' % amount,
         }
         resp = self._conn.request('/TokenManagementServer/Transfer/', req)
@@ -132,7 +132,7 @@ class Deal:
 
     def close(self, deal_id: int, blacklist: bool = False) -> dict:
         req = {
-            'id':            str(deal_id),
+            'id': str(deal_id),
             'blacklistType': 1 if blacklist else 0,
         }
         resp = self._conn.request('/DealManagementServer/Finish/', req)
@@ -151,6 +151,14 @@ class Deal:
         return self._conn.request('/DWHServer/GetDeals/', filters)
 
 
+class Predictor:
+    def __init__(self, transport: Transport):
+        self._conn = transport
+
+    def predict(self, req) -> dict:
+        return self._conn.request("/OrderPredictorServer/Predict", req)
+
+
 class Worker:
     def __init__(self, transport: Transport):
         self._conn = transport
@@ -166,7 +174,7 @@ class Task:
 
     def status(self, deal_id: int, task_id: str) -> dict:
         req = {
-            'id':     task_id,
+            'id': task_id,
             'dealID': str(deal_id),
         }
         resp = self._conn.request('/TaskManagementServer/Status/', req)
@@ -181,6 +189,7 @@ class Node:
         self.deal = Deal(conn)
         self.worker = Worker(conn)
         self.task = Task(conn)
+        self.predictor = Predictor(conn)
 
 
 def main():
