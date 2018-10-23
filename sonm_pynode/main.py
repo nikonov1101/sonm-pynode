@@ -191,6 +191,7 @@ class Task:
 class Node:
     def __init__(self, keyfile: str, password: str, endpoint: str):
         conn = Transport(keyfile, password, endpoint)
+        self.eth_addr = conn.eth_addr
         self.token = Token(conn)
         self.order = Order(conn)
         self.deal = Deal(conn)
