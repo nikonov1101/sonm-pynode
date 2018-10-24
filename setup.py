@@ -3,7 +3,7 @@ from os.path import join, dirname
 from setuptools import setup, find_packages
 
 setup(name='sonm_pynode',
-      version='0.0.4',
+      version='0.0.5',
       description='wrapper for AES-encrypted REST API provided by SONM Node',
       author='sshaman1101',
       long_description=open(join(dirname(__file__), 'README')).read(),
