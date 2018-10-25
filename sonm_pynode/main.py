@@ -128,6 +128,13 @@ class Order:
         resp = self._conn.request('/MarketServer/GetOrderByID/', req, timeout=timeout)
         return resp
 
+    def cancel(self, order_ids, timeout=60) -> dict:
+        req = {
+            'ids': order_ids,
+        }
+        resp = self._conn.request('/MarketServer/CancelOrders/', req, timeout=timeout)
+        return resp
+
 
 class Deal:
     def __init__(self, transport: Transport):
