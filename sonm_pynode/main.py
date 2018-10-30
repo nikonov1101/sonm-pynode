@@ -7,6 +7,14 @@ from Crypto.Cipher import AES
 
 from eth_keyfile import load_keyfile, decode_keyfile_json
 
+DEFAULT_TIMEOUT_SECS = 60
+
+ORDER_TYPE_BID = 1
+ORDER_TYPE_ASK = 2
+
+ORDER_STATUS_INACTIVE = 1
+ORDER_STATUS_ACTIVE = 2
+
 
 def bigint_from_string(v: str) -> float:
     return int(v) / 1e18
@@ -46,7 +54,7 @@ class Transport:
         aes = AES.new(self._priv_key, AES.MODE_CFB, vec, segment_size=self._segment_size)
         return aes.decrypt(msg)
 
-    def request(self, path, params=None, headers=None, timeout=60) -> dict:
+    def request(self, path: str, params=None, headers=None, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         if not params:
             params = dict()
         if not headers:
@@ -79,7 +87,7 @@ class Token:
     def __init__(self, transport: Transport):
         self._conn = transport
 
-    def balance(self, whom: str = None, timeout=60) -> dict:
+    def balance(self, whom: str = None, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         if not whom:
             whom = self._conn.eth_addr
         resp = self._conn.request('/TokenManagementServer/BalanceOf/', whom, timeout=timeout)
@@ -96,7 +104,7 @@ class Token:
         :param amount: wei-graded value to transfer (use 1e18 is you want to send 1 SNM)
         """
         req = {
-            'to': whom,
+            'to':     whom,
             'amount': '%d' % amount,
         }
         resp = self._conn.request('/TokenManagementServer/Transfer/', req, timeout=timeout)
@@ -107,28 +115,29 @@ class Order:
     def __init__(self, transport: Transport):
         self._conn = transport
 
-    def list(self, author: str, limit: int, order_type: int = 1, timeout=60) -> dict:
+    def list(self, author: str, limit: int, order_type: int = ORDER_TYPE_BID,
+             timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
-            'type': order_type,
-            'status': 2,
+            'type':     order_type,
+            'status':   ORDER_STATUS_ACTIVE,
             'authorID': author,
-            'limit:': limit
+            'limit:':   limit
         }
         resp = self._conn.request('/DWHServer/GetOrders/', req, timeout=timeout)
         return resp
 
-    def create(self, bid: dict, timeout=60) -> dict:
+    def create(self, bid: dict, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         resp = self._conn.request('/MarketServer/CreateOrder/', bid, timeout=timeout)
         return resp
 
-    def status(self, order_id: int, timeout=60) -> dict:
+    def status(self, order_id: int, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
             'id': str(order_id),
         }
         resp = self._conn.request('/MarketServer/GetOrderByID/', req, timeout=timeout)
         return resp
 
-    def cancel(self, order_ids, timeout=60) -> dict:
+    def cancel(self, order_ids: list, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
             'ids': order_ids,
         }
@@ -140,7 +149,7 @@ class Deal:
     def __init__(self, transport: Transport):
         self._conn = transport
 
-    def quick_buy(self, order_id: int, force: bool = False, timeout=60) -> dict:
+    def quick_buy(self, order_id: int, force: bool = False, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
             'askID': str(order_id),
             'force': force,
@@ -148,19 +157,19 @@ class Deal:
         resp = self._conn.request('/DealManagementServer/QuickBuy/', req, timeout=timeout)
         return resp
 
-    def status(self, deal_id: int, timeout=60) -> dict:
+    def status(self, deal_id: int, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         resp = self._conn.request('/DealManagementServer/Status/', str(deal_id), timeout=timeout)
         return resp
 
-    def close(self, deal_id: int, blacklist: bool = False, timeout=60) -> dict:
+    def close(self, deal_id: int, blacklist: bool = False, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
-            'id': str(deal_id),
+            'id':            str(deal_id),
             'blacklistType': 1 if blacklist else 0,
         }
         resp = self._conn.request('/DealManagementServer/Finish/', req, timeout=timeout)
         return resp
 
-    def open(self, ask_id: int, bid_id: int, force: bool = False, timeout=60) -> dict:
+    def open(self, ask_id: int, bid_id: int, force: bool = False, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
             'askID': str(ask_id),
             'bidID': str(bid_id),
@@ -169,7 +178,7 @@ class Deal:
         resp = self._conn.request('/DealManagementServer/Open/', req, timeout=timeout)
         return resp
 
-    def list(self, filters: dict, timeout=60) -> dict:
+    def list(self, filters: dict, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         return self._conn.request('/DWHServer/GetDeals/', filters, timeout=timeout)
 
 
@@ -177,7 +186,7 @@ class Predictor:
     def __init__(self, transport: Transport):
         self._conn = transport
 
-    def predict(self, req, timeout=60) -> dict:
+    def predict(self, req: dict, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         return self._conn.request("/OrderPredictorServer/Predict", req, timeout=timeout)
 
 
@@ -185,7 +194,7 @@ class Worker:
     def __init__(self, transport: Transport):
         self._conn = transport
 
-    def status(self, address, timeout=60) -> dict:
+    def status(self, address: str, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         headers = {'x-worker-eth-addr': address}
         return self._conn.request("/WorkerManagementServer/Status/", headers=headers, timeout=timeout)
 
@@ -194,45 +203,44 @@ class Task:
     def __init__(self, transport: Transport):
         self._conn = transport
 
-    def start(self, deal_id: str, task: dict, timeout=60) -> dict:
+    def start(self, deal_id: str, task: dict, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
             'dealID': deal_id,
-            'spec': task,
+            'spec':   task,
         }
         resp = self._conn.request('/TaskManagementServer/Start/', req, timeout=timeout)
         return resp
 
-    def stop(self, deal_id: str, task_id: str, timeout=60) -> dict:
+    def stop(self, deal_id: str, task_id: str, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
-            'id': task_id,
+            'id':     task_id,
             'dealID': deal_id,
         }
         resp = self._conn.request('/TaskManagementServer/Stop/', req, timeout=timeout)
         return resp
 
-    def status(self, deal_id: str, task_id: str, timeout=60) -> dict:
+    def status(self, deal_id: str, task_id: str, timeout: int = DEFAULT_TIMEOUT_SECS) -> dict:
         req = {
-            'id': task_id,
+            'id':     task_id,
             'dealID': deal_id,
         }
         resp = self._conn.request('/TaskManagementServer/Status/', req, timeout=timeout)
         return resp
 
-    def list(self, deal_id, timeout=60):
+    def list(self, deal_id: str, timeout: int = DEFAULT_TIMEOUT_SECS):
         req = {
             'dealID': deal_id,
         }
         resp = self._conn.request('/TaskManagementServer/List/', req, timeout=timeout)
         return resp
 
-    def logs(self, timeout=60):  # TODO
+    def logs(self, timeout: int = DEFAULT_TIMEOUT_SECS):  # TODO
         pass
 
 
 class Node:
     def __init__(self, keyfile: str, password: str, endpoint: str):
         conn = Transport(keyfile, password, endpoint)
-        self.eth_addr = conn.eth_addr
         self.token = Token(conn)
         self.order = Order(conn)
         self.deal = Deal(conn)
