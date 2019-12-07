@@ -1,6 +1,4 @@
 SONM pyNode
 ===================
 
-Try to write wrapper for AES-encrypted REST API provided by SONM Node.
-
-So WIP, such unstable!
+Client-side wrapper for the AES-encrypted REST API, provided by the SONM Node.
