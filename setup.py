@@ -12,7 +12,7 @@ setup(name='sonm_pynode',
       install_requires=[
           'Crypto',
           'cytoolz==0.9.0.1',
-          'ecdsa==0.13',
+          'ecdsa==0.13.3',
           'eth-hash==0.2.0',
           'eth-keyfile==0.5.1',
           'eth-keys==0.2.0b3',
