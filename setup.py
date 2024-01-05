@@ -18,6 +18,6 @@ setup(name='sonm_pynode',
           'eth-keys==0.2.0b3',
           'eth-typing==2.0.0',
           'eth-utils==1.3.0b0',
-          'pycryptodome==3.6.6',
+          'pycryptodome==3.19.1',
           'toolz==0.9.0']
       )
